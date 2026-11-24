@@ -1253,8 +1253,8 @@ final class LaneShuntTests: XCTestCase {
                 emit.sendImmediate(response: resp, data: Data([payload[0]]))
                 return
             }
-            // 每条流精确 1250 B / 50ms = 25 KB/s（6 条聚合 ≈ 150 KB/s >= 48 KB/s）
-            emit.sendPaced(response: resp, data: Data(payload[start...end]), pieceSize: 1250, initialDelayMs: 5, pieceDelayMs: 50)
+            // 每条流 2048 B / 50ms ≈ 40 KB/s（低于 80 KB/s 高速阈值，6 条聚合 ≈ 240 KB/s，即使在低配 CI 虚拟机下也远高于 48 KB/s）
+            emit.sendPaced(response: resp, data: Data(payload[start...end]), pieceSize: 2048, initialDelayMs: 5, pieceDelayMs: 50)
         }
 
         let diagBox = DiagnosticsBox()
@@ -1265,12 +1265,12 @@ final class LaneShuntTests: XCTestCase {
             baseSessionConfiguration: Self.makeMockSessionConfig(),
             warmupGracePeriod: 0.12,
             speedSampleWindow: 0.30,
-            scoutHighSpeedThresholdBytesPerSec: 64 * 1024,
+            scoutHighSpeedThresholdBytesPerSec: 80 * 1024,
             scoutSustainDuration: 0.20,
             scoutCooldown: 0.25,
             maxScoutRotations: 2,
             scoutSuccessMinRatio: 2.0,
-            scoutSuccessMinSpeedBytesPerSec: 80 * 1024,
+            scoutSuccessMinSpeedBytesPerSec: 120 * 1024,
             narrowbandAggregateThresholdBytesPerSec: 48 * 1024,
             narrowbandReducedConnections: 2,
             watchdogInterval: 0.05
