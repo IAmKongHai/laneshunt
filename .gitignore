@@ -1,0 +1,12 @@
+.DS_Store
+.build/
+.swiftpm/
+*.xcodeproj
+*.xcworkspace
+Package.resolved
+coverage.out
+*.tmp
+.resilient-dl-*.tmp
+.laneshunt-*.tmp
+/go/laneshunt
+/go/laneshunt.exe

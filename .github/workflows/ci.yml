@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*', 'go/v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  swift-macos:
+    name: Swift (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify zero third-party imports
+        run: |
+          imports=$(grep -rh '^import ' swift/Sources/LaneShunt | sort -u)
+          echo "$imports"
+          if echo "$imports" | grep -Ev '^import (Foundation|Darwin|Glibc|Musl)$'; then
+            echo "Unexpected Swift import detected"
+            exit 1
+          fi
+      - name: Run Swift tests
+        run: swift test --parallel
+
+  go-test:
+    name: Go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+        go-version: ['1.22', '1.24']
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Check gofmt
+        shell: bash
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Unformatted Go files:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Verify zero external dependencies
+        shell: bash
+        run: |
+          deps=$(go list -f '{{join .Imports "\n"}}' .)
+          echo "$deps"
+          if echo "$deps" | grep '\.'; then
+            echo "Unexpected third-party Go import detected"
+            exit 1
+          fi
+      - name: Run go vet
+        run: go vet ./...
+      - name: Run Go tests with race detector
+        run: go test -race -count=1 ./...
+      - name: Build CLI
+        run: go build ./cmd/laneshunt
