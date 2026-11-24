@@ -22,7 +22,7 @@ jobs:
             exit 1
           fi
       - name: Run Swift tests
-        run: swift test --parallel
+        run: swift test
 
   go-test:
     name: Go (${{ matrix.os }})

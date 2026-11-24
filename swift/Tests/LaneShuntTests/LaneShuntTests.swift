@@ -1181,6 +1181,8 @@ final class LaneShuntTests: XCTestCase {
         let payload = Self.deterministicPayload(size: 768 * 1024, seed: 0xA1)
         let url = URL(string: "https://mock.laneshunt.local/scenario-a.dmg")!
         let chunkRequestSeq = AtomicCounter()
+        let lastChunkFirstAttempt = AtomicCounter()
+        let lastChunkStart = payload.count - 64 * 1024
 
         ConcurrentMockURLProtocol.handler = { request, emit in
             let (start, end) = Self.parseRangeHeader(request.value(forHTTPHeaderField: "Range"), total: payload.count)!
@@ -1195,8 +1197,9 @@ final class LaneShuntTests: XCTestCase {
 
             let seq = chunkRequestSeq.increment()
             let slice = Data(payload[start...end])
-            if seq <= 4 {
-                // 4 条初始慢槽：1 KB / 100ms ≈ 10 KB/s
+            let isSlowTailFirstAttempt = (start == lastChunkStart && lastChunkFirstAttempt.increment() == 1)
+            if seq <= 4 || isSlowTailFirstAttempt {
+                // 4 条初始慢槽 + 末块首次尝试慢速：1 KB / 100ms ≈ 10 KB/s，确保既触发慢流轮换又触发尾块对冲
                 emit.sendPaced(response: resp, data: slice, pieceSize: 1024, initialDelayMs: 10, pieceDelayMs: 100)
             } else {
                 // 2 条快槽与轮换/对冲后新连接：16 KB / 30ms ≈ 530 KB/s
